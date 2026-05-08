@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a3a5c">
+  <title>Ficha OAM — Atendimento</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Ficha OAM</h1>
+  <span class="versao">v1.1</span>
+</header>
+
+<form id="ficha" autocomplete="off">
+
+<!-- ========================================== -->
+<!-- 1. ATENDIMENTO -->
+<!-- ========================================== -->
+<details class="secao" open>
+  <summary>1. Atendimento</summary>
+  <div class="conteudo">
+    <label>Data de entrada no escritório
+      <input type="date" name="data_atendimento">
+    </label>
+    <label>Quem indicou / como chegou
+      <select name="origem_cliente">
+        <option value="">--</option>
+        <option>Indicação de cliente</option>
+        <option>Cartão na garagem</option>
+        <option>WhatsApp</option>
+        <option>Instagram</option>
+        <option>Site / Google</option>
+        <option>Indicação de outro advogado</option>
+        <option>Já é cliente</option>
+        <option>Outro</option>
+      </select>
+    </label>
+    <label>Detalhe da indicação (nome de quem indicou)
+      <input type="text" name="origem_detalhe">
+    </label>
+
+    <h3>Reclamante</h3>
+    <label>Nome completo <span class="obrig">*</span>
+      <input type="text" name="rec_nome" required>
+    </label>
+    <label>Apelido (se houver)
+      <input type="text" name="rec_apelido">
+    </label>
+    <label>Nome da mãe
+      <input type="text" name="rec_nome_mae">
+    </label>
+    <label>Telefones
+      <input type="tel" name="rec_telefones" inputmode="tel">
+    </label>
+    <label>WhatsApp (qual número)
+      <input type="tel" name="rec_whatsapp" inputmode="tel">
+    </label>
+    <label>E-mail
+      <input type="email" name="rec_email" inputmode="email">
+    </label>
+    <label>Endereço completo
+      <input type="text" name="rec_endereco">
+    </label>
+    <label>CEP
+      <input type="text" name="rec_cep" inputmode="numeric">
+    </label>
+
+    <h3>Documentos do reclamante</h3>
+    <p class="hint">Preencher só se trouxer; senão deixar em branco.</p>
+    <label>RG
+      <input type="text" name="rec_rg">
+    </label>
+    <label>CPF
+      <input type="text" name="rec_cpf" inputmode="numeric">
+    </label>
+    <label>PIS / PASEP
+      <input type="text" name="rec_pis" inputmode="numeric">
+    </label>
+    <label>CTPS (nº/série)
+      <input type="text" name="rec_ctps">
+    </label>
+    <label>Data de nascimento
+      <input type="date" name="rec_data_nasc">
+    </label>
+    <label>Estado civil
+      <select name="rec_estado_civil">
+        <option value="">--</option>
+        <option>Solteiro(a)</option>
+        <option>Casado(a)</option>
+        <option>Divorciado(a)</option>
+        <option>Viúvo(a)</option>
+        <option>União estável</option>
+      </select>
+    </label>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 2. FOTO E RELACIONAMENTO -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>2. Foto e Relacionamento</summary>
+  <div class="conteudo">
+    <p class="hint">Estas notas servem só para o atendimento. NÃO entram na peça processual.</p>
+
+    <h3>Foto do cliente</h3>
+    <div id="foto-cliente-area">
+      <div class="foto-placeholder" id="foto-cliente-preview">(sem foto)</div>
+      <input type="file" id="foto-cliente-input" accept="image/*" capture="user" hidden>
+      <div class="botoes-foto">
+        <button type="button" class="btn-secundario" onclick="document.getElementById('foto-cliente-input').click()">
+          📷 Tirar / Carregar foto
+        </button>
+        <button type="button" class="btn-aviso" id="btn-remover-foto-cliente">Remover</button>
+      </div>
+    </div>
+
+    <h3>Notas pessoais (uso interno)</h3>
+    <label>Como prefere ser chamado
+      <input type="text" name="rel_como_chamar">
+    </label>
+    <label>Saúde / condições médicas / medicamentos
+      <textarea name="rel_saude" rows="3"></textarea>
+    </label>
+    <label>Família (cônjuge, filhos — nomes, idades)
+      <textarea name="rel_familia" rows="3"></textarea>
+    </label>
+    <label>Outras particularidades (hobbies, interesses, situação pessoal)
+      <textarea name="rel_particularidades" rows="4"></textarea>
+    </label>
+    <label>Lembretes para próximos contatos
+      <textarea name="rel_proximos_contatos" rows="3"></textarea>
+    </label>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 3. CONTRATO E EMPRESA -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>3. Contrato e Empresa</summary>
+  <div class="conteudo">
+    <label>Empresa (razão social) <span class="obrig">*</span>
+      <input type="text" name="emp_nome" required>
+    </label>
+    <label>Consórcio
+      <select name="emp_consorcio">
+        <option value="">--</option>
+        <option>Não sei</option>
+        <option>Intersul</option>
+        <option>Internorte</option>
+        <option>Transcarioca</option>
+        <option>Santa Cruz</option>
+        <option>Não pertence</option>
+      </select>
+    </label>
+    <label>Cor do carro (se cliente não souber consórcio)
+      <input type="text" name="emp_cor_carro">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="emp_recuperacao">
+      Empresa em recuperação judicial
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="emp_lide_simulada">
+      Empresa indicou advogado para lide simulada
+    </label>
+
+    <hr>
+
+    <label>Data de admissão (dd/mm/aaaa) <span class="obrig">*</span>
+      <input type="date" name="adm_data" required>
+    </label>
+    <label>Data de saída efetiva
+      <input type="date" name="dem_data">
+    </label>
+    <label>Data da Baixa / TRCT
+      <input type="date" name="trct_data">
+    </label>
+    <label>Último salário (R$)
+      <input type="text" name="salario_base" inputmode="decimal" placeholder="2907,15">
+    </label>
+
+    <p class="aviso">⚠ TIRAR FOTO DAS ALTERAÇÕES DE SALÁRIO E FUNÇÃO, SE EXISTIREM.</p>
+
+    <label>Função registrada na CTPS
+      <select name="funcao_ctps">
+        <option value="">--</option>
+        <option>Motorista</option>
+        <option>Motorista articulado/biarticulado</option>
+        <option>Motorista mini/midi (junior)</option>
+        <option>Cobrador</option>
+        <option>Despachante</option>
+        <option>Fiscal</option>
+        <option>Manobrista</option>
+        <option>Outra</option>
+      </select>
+    </label>
+    <label>Função real exercida
+      <input type="text" name="funcao_real">
+    </label>
+    <label>Motivo do desligamento <span class="obrig">*</span>
+      <select name="tipo_causa" required>
+        <option value="">--</option>
+        <option>Pedido de demissão</option>
+        <option>Sem justa causa</option>
+        <option>Justa causa (impugnar)</option>
+        <option>Rescisão indireta</option>
+        <option>Contrato ainda ativo</option>
+      </select>
+    </label>
+    <label>Quais linhas/itinerários trabalhou
+      <input type="text" name="linhas">
+    </label>
+    <label>Se justa causa, motivo (nomes, horário, local)
+      <textarea name="justa_causa_motivo" rows="3"></textarea>
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="defesa_escrita">
+      Teve direito de defesa por escrito
+    </label>
+
+    <label>Aviso prévio
+      <select name="aviso_previo">
+        <option value="">--</option>
+        <option>Trabalhado</option>
+        <option>Indenizado</option>
+        <option>Não recebeu</option>
+      </select>
+    </label>
+    <label>Se trabalhado, redução
+      <select name="aviso_reducao">
+        <option value="">--</option>
+        <option>2 horas a menos</option>
+        <option>7 dias corridos</option>
+        <option>Sem redução</option>
+      </select>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="trct_recebeu">
+      Recebeu TRCT
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="trct_trouxe">
+      Trouxe TRCT ao escritório
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="contracheques_trouxe">
+      Trouxe contracheques
+    </label>
+    <p class="aviso">⚠ Se tiver TRCT mas não trouxe — pedir para trazer ao escritório.</p>
+
+    <label>Celebrou acordo judicial nesse período?
+      <input type="text" name="acordo_judicial">
+    </label>
+    <label>Situação atual
+      <select name="situacao_atual">
+        <option value="">--</option>
+        <option>Desempregado</option>
+        <option>Empregado</option>
+        <option>Aposentado</option>
+        <option>Outro</option>
+      </select>
+    </label>
+    <label>Se empregado: empresa e data de entrada
+      <input type="text" name="novo_emprego">
+    </label>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 4. JORNADA -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>4. Jornada</summary>
+  <div class="conteudo">
+    <label>Escala
+      <select name="jor_escala">
+        <option value="">--</option>
+        <option>6x1</option>
+        <option>7x1</option>
+        <option>5x1</option>
+        <option>12x36</option>
+        <option>Outra</option>
+      </select>
+    </label>
+    <label>Turno habitual
+      <select name="jor_turno">
+        <option value="">--</option>
+        <option>1º turno</option>
+        <option>2º turno</option>
+        <option>3º turno</option>
+        <option>Migração entre turnos</option>
+      </select>
+    </label>
+    <label>Períodos em cada turno (meses/anos)
+      <textarea name="jor_turnos_periodos" rows="3"></textarea>
+    </label>
+    <label>Hora que pisava no ponto/garagem (início)
+      <input type="time" name="jor_pisa_ponto">
+    </label>
+    <label>Hora término no ponto/garagem (motorista que só dirige)
+      <input type="time" name="jor_termino_ponto">
+    </label>
+    <label>Hora término na arrecadação (cobrador)
+      <input type="time" name="jor_termino_arrecadacao">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="jor_dobra">
+      Fazia dobra
+    </label>
+    <label>Horário da dobra
+      <input type="text" name="jor_dobra_horario">
+    </label>
+    <label>Quantas dobras por semana
+      <input type="number" name="jor_dobra_qtd" inputmode="numeric">
+    </label>
+    <label>Domingos e feriados
+      <select name="jor_domingos">
+        <option value="">--</option>
+        <option>Não trabalhava</option>
+        <option>Esporadicamente</option>
+        <option>Habitualmente</option>
+      </select>
+    </label>
+    <label>Trabalho noturno (22h-5h)
+      <select name="jor_noturno">
+        <option value="">--</option>
+        <option>Nunca</option>
+        <option>Parcial</option>
+        <option>Integral</option>
+      </select>
+    </label>
+    <label>Folgas semanais
+      <input type="text" name="jor_folgas">
+    </label>
+
+    <h3>Intervalos e infraestrutura no posto</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="int_placa">
+      Tinha intervalo de placa
+    </label>
+    <label>Horário de almoço (se tinha)
+      <input type="text" name="int_almoco_horario">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="tem_banheiro">
+      Havia banheiro disponível
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="tem_bebedouro">
+      Havia bebedouro disponível
+    </label>
+    <p class="aviso">⚠ Falta de banheiro/bebedouro: dano moral padrão R$ 10.000.</p>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 5. ACÚMULO / DESVIO -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>5. Acúmulo / Desvio</summary>
+  <div class="conteudo">
+    <label class="checkbox">
+      <input type="checkbox" name="acu_manobrista_dirigia">
+      Era manobrista mas dirigia ônibus na rua
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="acu_mini_dirigia_micrao">
+      Contratado como motorista mini/midi mas dirigia MICRÃO
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="acu_motorista_cobrava">
+      Motorista que dirigia E cobrava
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="acu_fiscal_despachante">
+      Fiscal que exerceu função de despachante
+    </label>
+    <label>Período do acúmulo
+      <input type="text" name="acu_periodo">
+    </label>
+    <label>Se fiscal-despachante, frequência e horário
+      <input type="text" name="acu_fiscal_freq">
+    </label>
+    <label>Outras funções não contratadas
+      <textarea name="acu_outras_funcoes" rows="3"></textarea>
+    </label>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 6. DESCONTOS E DANOS MORAIS -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>6. Descontos e Danos Morais</summary>
+  <div class="conteudo">
+    <h3>Troco</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="troco_fornecido_empresa">
+      Empresa fornecia troco
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="troco_ofendido_passageiro">
+      Já foi ofendido por passageiro por falta de troco
+    </label>
+    <label>Quanto de dinheiro portava (R$)
+      <input type="text" name="troco_valor_portava" inputmode="decimal">
+    </label>
+
+    <h3>Descontos sofridos</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="desc_avaria">
+      Desconto por avaria
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="desc_multa">
+      Desconto por multa
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="desc_diferenca_roleta">
+      Diferença na roleta
+    </label>
+    <label>Observações sobre os descontos
+      <textarea name="desc_observacoes" rows="2"></textarea>
+    </label>
+
+    <h3>Vale alimentação / cesta</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="va_sodexo_recebeu">
+      Recebeu Ticket Sodexo / VA
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="va_sodexo_cortado">
+      VA foi cortado
+    </label>
+    <label>Valor mensal (R$)
+      <input type="text" name="va_valor_mensal" inputmode="decimal">
+    </label>
+
+    <h3>Danos morais</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="dano_assedio_producao">
+      Assédio moral por produção
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="dano_levou_falta">
+      Levou falta/gancho por isso
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="dano_lista_exposta">
+      Nome exposto em lista na empresa
+    </label>
+    <label>Motivo da exposição
+      <input type="text" name="dano_lista_motivo">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="dano_assedio_sexual">
+      Sofreu assédio sexual / briga / perseguição
+    </label>
+    <label>Detalhes (conduta, horário, nomes, BO)
+      <textarea name="dano_assedio_detalhes" rows="3"></textarea>
+    </label>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 7. FÉRIAS, DOCS DISPONÍVEIS E FOTOS DE DOCS -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>7. Férias, Documentos e Fotos</summary>
+  <div class="conteudo">
+    <h3>Férias</h3>
+    <label class="checkbox">
+      <input type="checkbox" name="ferias_tirou">
+      Tirou férias durante o contrato
+    </label>
+    <label>Período(s) e quantidade de dias
+      <input type="text" name="ferias_periodo">
+    </label>
+
+    <h3>Documentos disponíveis (inventário)</h3>
+    <p class="hint">Marque o que o cliente tem como obter, mesmo que não trouxe agora.</p>
+    <div class="checks-grid">
+      <label class="checkbox"><input type="checkbox" name="doc_ctps">CTPS</label>
+      <label class="checkbox"><input type="checkbox" name="doc_rg">RG</label>
+      <label class="checkbox"><input type="checkbox" name="doc_cpf">CPF</label>
+      <label class="checkbox"><input type="checkbox" name="doc_cnh">CNH</label>
+      <label class="checkbox"><input type="checkbox" name="doc_holerites">Holerites</label>
+      <label class="checkbox"><input type="checkbox" name="doc_cartao_ponto">Cartão de ponto</label>
+      <label class="checkbox"><input type="checkbox" name="doc_escalas">Escalas</label>
+      <label class="checkbox"><input type="checkbox" name="doc_trct">TRCT</label>
+      <label class="checkbox"><input type="checkbox" name="doc_extrato_fgts">Extrato FGTS</label>
+      <label class="checkbox"><input type="checkbox" name="doc_advertencias">Advertências</label>
+      <label class="checkbox"><input type="checkbox" name="doc_contrato">Contrato</label>
+    </div>
+
+    <h3>Fotos de documentos do cliente</h3>
+    <p class="hint">Tire fotos de qualquer documento que o cliente tiver em mãos. Você pode descrever cada foto livremente (ex: "CTPS página de admissão", "Holerite jan/2025").</p>
+    <input type="file" id="doc-input" accept="image/*" capture="environment" hidden>
+    <button type="button" class="btn-doc" onclick="document.getElementById('doc-input').click()">
+      ➕ Adicionar foto de documento
+    </button>
+    <div id="lista-docs"></div>
+  </div>
+</details>
+
+<!-- ========================================== -->
+<!-- 8. OBSERVAÇÕES -->
+<!-- ========================================== -->
+<details class="secao">
+  <summary>8. Observações</summary>
+  <div class="conteudo">
+    <p class="aviso">⚠ ALERTAR O CLIENTE: NÃO SER TESTEMUNHA DE AMIGOS. Se for ser testemunha, ligar antes para o escritório.</p>
+    <label>Particularidades do caso, fatos extras, contatos de testemunhas
+      <textarea name="obs_geral" rows="8"></textarea>
+    </label>
+    <label>Advogado responsável pelo atendimento
+      <input type="text" name="adv_responsavel">
+    </label>
+  </div>
+</details>
+
+</form>
+
+<!-- BARRA INFERIOR FIXA -->
+<footer class="barra-acao">
+  <button type="button" class="btn-secundario" id="btn-limpar">Limpar</button>
+  <button type="button" class="btn-principal" id="btn-enviar">📧 Enviar por email</button>
+</footer>
+
+<!-- DIÁLOGO DE STATUS -->
+<div id="overlay" class="overlay" hidden>
+  <div class="modal">
+    <div id="overlay-msg">Processando...</div>
+    <button type="button" class="btn-secundario" id="btn-fechar-overlay" hidden>OK</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
