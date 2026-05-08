@@ -1,20 +1,21 @@
 /* ====================================================================
- * Ficha OAM - PWA (v1.1)
+ * Ficha OAM - PWA (v1.2)
  * Captura ficha de atendimento, fotos, e envia por email.
  * Anexos: ficha_dados.json (Skynet), ficha_visual.doc (advogados),
  * foto_cliente.jpg, doc_NN.jpg.
+ *
+ * v1.2: corrige "permission denied" no Web Share API trocando MIME do .doc
+ *       de application/msword para text/html (msword é bloqueado pelo Chrome
+ *       Android). Adiciona fallback automático para mailto+download quando
+ *       o share falha — Gmail abre com oamcybernet@gmail.com já preenchido.
  * ==================================================================== */
 
 const EMAIL_DESTINO = "oamcybernet@gmail.com";
 
-// Configurações de redimensionamento de fotos
-const FOTO_CLIENTE_LARGURA_MAX = 800;   // foto do cliente (rosto), menor
-const DOC_LARGURA_MAX = 1500;            // foto de documento, precisa ler letra miúda
+const FOTO_CLIENTE_LARGURA_MAX = 800;
+const DOC_LARGURA_MAX = 1500;
 const JPEG_QUALIDADE = 0.8;
 
-// ====================================================================
-// REGISTRO DO SERVICE WORKER (para a PWA poder ser instalada)
-// ====================================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => {
@@ -23,42 +24,26 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ====================================================================
-// ESTADO
-// ====================================================================
-let fotoCliente = null;   // { blob, dataUrl }
-let docs = [];            // array de { id, blob, dataUrl, descricao }
+let fotoCliente = null;
+let docs = [];
 let proxId = 1;
 
-// ====================================================================
-// INICIALIZAÇÃO
-// ====================================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // Data de atendimento = hoje
   const hoje = new Date().toISOString().split('T')[0];
   document.querySelector('input[name="data_atendimento"]').value = hoje;
 
-  // Foto do cliente
   document.getElementById('foto-cliente-input').addEventListener('change', onFotoClienteSelecionada);
   document.getElementById('btn-remover-foto-cliente').addEventListener('click', removerFotoCliente);
-
-  // Documentos
   document.getElementById('doc-input').addEventListener('change', onDocSelecionado);
-
-  // Botões da barra inferior
   document.getElementById('btn-limpar').addEventListener('click', limparTudo);
   document.getElementById('btn-enviar').addEventListener('click', enviarPorEmail);
 
-  // Botão fechar overlay
   document.getElementById('btn-fechar-overlay').addEventListener('click', () => {
     document.getElementById('overlay').hidden = true;
     document.getElementById('btn-fechar-overlay').hidden = true;
   });
 });
 
-// ====================================================================
-// REDIMENSIONAMENTO DE IMAGEM (canvas)
-// ====================================================================
 function redimensionarImagem(file, larguraMax) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -76,16 +61,11 @@ function redimensionarImagem(file, larguraMax) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error("Falha ao gerar blob"));
-            return;
-          }
+          if (!blob) { reject(new Error("Falha ao gerar blob")); return; }
           const reader2 = new FileReader();
           reader2.onload = () => resolve({
-            blob,
-            dataUrl: reader2.result,
-            largura: width,
-            altura: height,
+            blob, dataUrl: reader2.result,
+            largura: width, altura: height,
             tamanho_kb: Math.round(blob.size / 1024),
           });
           reader2.readAsDataURL(blob);
@@ -99,9 +79,6 @@ function redimensionarImagem(file, larguraMax) {
   });
 }
 
-// ====================================================================
-// FOTO DO CLIENTE
-// ====================================================================
 async function onFotoClienteSelecionada(ev) {
   const file = ev.target.files[0];
   if (!file) return;
@@ -124,9 +101,6 @@ function removerFotoCliente() {
   document.getElementById('foto-cliente-preview').innerHTML = '(sem foto)';
 }
 
-// ====================================================================
-// FOTOS DE DOCUMENTOS (multi)
-// ====================================================================
 async function onDocSelecionado(ev) {
   const file = ev.target.files[0];
   if (!file) return;
@@ -174,9 +148,6 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// ====================================================================
-// COLETAR DADOS DA FICHA
-// ====================================================================
 function coletarFicha() {
   const form = document.getElementById('ficha');
   const dados = {};
@@ -325,7 +296,7 @@ function montarEstrutura(d) {
     },
     metadata: {
       preenchido_em: new Date().toISOString(),
-      versao_ficha: "1.1-pwa",
+      versao_ficha: "1.2-pwa",
       fonte: "PWA Ficha OAM",
     },
   };
@@ -340,9 +311,6 @@ function validar(d) {
   return faltam;
 }
 
-// ====================================================================
-// LIMPAR FORMULÁRIO
-// ====================================================================
 function limparTudo() {
   if (!confirm('Limpar todos os campos? A foto e os documentos também serão removidos.')) return;
   document.getElementById('ficha').reset();
@@ -350,14 +318,10 @@ function limparTudo() {
   document.getElementById('foto-cliente-preview').innerHTML = '(sem foto)';
   docs = [];
   renderListaDocs();
-  // Restaura data
   const hoje = new Date().toISOString().split('T')[0];
   document.querySelector('input[name="data_atendimento"]').value = hoje;
 }
 
-// ====================================================================
-// MONTAR CORPO DO EMAIL
-// ====================================================================
 function montarCorpo(d, est) {
   const nome = (d.rec_nome || '').toUpperCase();
   const empresa = (d.emp_nome || '').toUpperCase();
@@ -403,7 +367,6 @@ function montarCorpo(d, est) {
     linhas.push('');
   }
 
-  // Anexos
   linhas.push('--- ANEXOS ---');
   let n = 1;
   if (fotoCliente) linhas.push(n++ + '. foto_cliente.jpg');
@@ -424,11 +387,6 @@ function nomeArquivoBase(d) {
   return limp(d.rec_nome) + '_x_' + limp(d.emp_nome);
 }
 
-// ====================================================================
-// GERAR DOCUMENTO WORD (.doc) PARA CONSULTA VISUAL DOS ADVOGADOS
-// HTML formatado + namespaces MS Office, salvo como .doc.
-// Word, LibreOffice e Google Docs abrem nativamente.
-// ====================================================================
 function gerarDocumentoWord(d, est) {
   const fmtData = (s) => {
     if (!s) return '—';
@@ -527,9 +485,7 @@ function gerarDocumentoWord(d, est) {
     ? '<h2>7. DOCUMENTOS DISPONÍVEIS (Inventário)</h2><p>' + docsDisp.map(x => escapeHtml(x)).join(' &nbsp;•&nbsp; ') + '</p>'
     : '';
 
-  const blocoObs = d.obs_geral
-    ? '<h2>8. OBSERVAÇÕES GERAIS</h2><p>' + oub(d.obs_geral) + '</p>'
-    : '';
+  const blocoObs = d.obs_geral ? '<h2>8. OBSERVAÇÕES GERAIS</h2><p>' + oub(d.obs_geral) + '</p>' : '';
 
   let blocoRel = '';
   if (d.rel_saude || d.rel_familia || d.rel_particularidades || d.rel_proximos_contatos) {
@@ -545,34 +501,32 @@ function gerarDocumentoWord(d, est) {
     ? '<h2>ANEXOS RECEBIDOS NESTE EMAIL</h2><ul>' + linhasAnexos.map(a => '<li>' + escapeHtml(a) + '</li>').join('') + '</ul>'
     : '';
 
-  const estilos = '@page { size: A4; margin: 2cm 2cm; } '
-    + 'body { font-family: \'Calibri\',\'Arial\',sans-serif; font-size: 10.5pt; color: #222; line-height: 1.35; } '
-    + 'h1 { color: #1a3a5c; font-size: 16pt; margin: 0 0 2pt 0; text-align: center; letter-spacing: 1pt; } '
-    + 'h2 { color: #1a3a5c; font-size: 12pt; margin: 14pt 0 4pt 0; padding-bottom: 2pt; border-bottom: 1pt solid #1a3a5c; } '
-    + '.subtitulo { text-align: center; font-size: 9pt; color: #666; margin: 0 0 12pt 0; } '
-    + '.cabecalho { background: #1a3a5c; color: #ffffff; padding: 10pt 12pt; margin: 0 0 10pt 0; } '
-    + '.cabecalho .nome { font-size: 14pt; font-weight: bold; } '
-    + '.cabecalho .empresa { font-size: 11pt; margin-top: 2pt; } '
-    + '.cabecalho .meta { font-size: 9pt; color: #cdd5e0; margin-top: 4pt; } '
-    + 'table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt 0; } '
-    + 'td { border: 0.5pt solid #aaa; padding: 4pt 6pt; vertical-align: top; } '
-    + 'td.label { background: #eef0f4; font-weight: bold; width: 32%; color: #1a3a5c; } '
-    + 'ul { margin: 4pt 0 8pt 18pt; padding: 0; } '
-    + 'li { margin: 2pt 0; } '
-    + '.alerta { background: #fff3cd; border-left: 4pt solid #d29c00; padding: 6pt 10pt; margin: 6pt 0; font-weight: bold; color: #6b4c00; } '
-    + '.foto-cliente { text-align: center; margin: 10pt 0; } '
-    + '.foto-cliente img { max-width: 200pt; border: 1pt solid #999; } '
-    + '.foto-legenda { font-size: 9pt; color: #666; margin-top: 2pt; } '
-    + '.rodape { margin-top: 18pt; padding-top: 6pt; border-top: 0.5pt solid #999; font-size: 8pt; color: #777; } '
-    + '.tag-causa { background: #1a3a5c; color: #fff; padding: 1pt 6pt; font-weight: bold; }';
+  const estilos = '@page{size:A4;margin:2cm 2cm}'
+    + 'body{font-family:\'Calibri\',\'Arial\',sans-serif;font-size:10.5pt;color:#222;line-height:1.35}'
+    + 'h1{color:#1a3a5c;font-size:16pt;margin:0 0 2pt 0;text-align:center;letter-spacing:1pt}'
+    + 'h2{color:#1a3a5c;font-size:12pt;margin:14pt 0 4pt 0;padding-bottom:2pt;border-bottom:1pt solid #1a3a5c}'
+    + '.subtitulo{text-align:center;font-size:9pt;color:#666;margin:0 0 12pt 0}'
+    + '.cabecalho{background:#1a3a5c;color:#fff;padding:10pt 12pt;margin:0 0 10pt 0}'
+    + '.cabecalho .nome{font-size:14pt;font-weight:bold}'
+    + '.cabecalho .empresa{font-size:11pt;margin-top:2pt}'
+    + '.cabecalho .meta{font-size:9pt;color:#cdd5e0;margin-top:4pt}'
+    + 'table{border-collapse:collapse;width:100%;margin:4pt 0 8pt 0}'
+    + 'td{border:0.5pt solid #aaa;padding:4pt 6pt;vertical-align:top}'
+    + 'td.label{background:#eef0f4;font-weight:bold;width:32%;color:#1a3a5c}'
+    + 'ul{margin:4pt 0 8pt 18pt;padding:0}li{margin:2pt 0}'
+    + '.alerta{background:#fff3cd;border-left:4pt solid #d29c00;padding:6pt 10pt;margin:6pt 0;font-weight:bold;color:#6b4c00}'
+    + '.foto-cliente{text-align:center;margin:10pt 0}'
+    + '.foto-cliente img{max-width:200pt;border:1pt solid #999}'
+    + '.foto-legenda{font-size:9pt;color:#666;margin-top:2pt}'
+    + '.rodape{margin-top:18pt;padding-top:6pt;border-top:0.5pt solid #999;font-size:8pt;color:#777}'
+    + '.tag-causa{background:#1a3a5c;color:#fff;padding:1pt 6pt;font-weight:bold}';
 
   const html = '<!DOCTYPE html>'
     + '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
     + '<head><meta charset="UTF-8">'
     + '<title>Ficha — ' + nomeUpper + ' x ' + empresaUpper + '</title>'
     + '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotPromptForConvert/></w:WordDocument></xml><![endif]-->'
-    + '<style>' + estilos + '</style>'
-    + '</head><body>'
+    + '<style>' + estilos + '</style></head><body>'
     + '<h1>FICHA DE ATENDIMENTO</h1>'
     + '<div class="subtitulo">OAM ADVOGADOS — Direito Trabalhista Rodoviário</div>'
     + '<div class="cabecalho">'
@@ -582,8 +536,7 @@ function gerarDocumentoWord(d, est) {
     +     ' &nbsp;•&nbsp; Atendido por: ' + ou(d.adv_responsavel)
     +     ' &nbsp;•&nbsp; Origem: ' + ou(d.origem_cliente)
     +     (d.origem_detalhe ? ' (' + escapeHtml(d.origem_detalhe) + ')' : '')
-    +   '</div>'
-    + '</div>'
+    +   '</div></div>'
     + alertaRJ + alertaLide + fotoBlock
     + '<h2>1. RECLAMANTE — Qualificação</h2><table>'
     +   '<tr><td class="label">Nome completo</td><td>' + ou(d.rec_nome) + '</td></tr>'
@@ -604,9 +557,9 @@ function gerarDocumentoWord(d, est) {
     + '</table>'
     + '<h2>2. CONTRATO DE TRABALHO</h2><table>'
     +   '<tr><td class="label">Empresa (Reclamada)</td><td>' + ou(d.emp_nome) + '</td></tr>'
-    +   '<tr><td class="label">Consórcio</td><td>' + ou(d.emp_consorcio) + (d.emp_cor_carro ? ' &nbsp;|&nbsp; cor do carro: ' + escapeHtml(d.emp_cor_carro) : '') + '</td></tr>'
+    +   '<tr><td class="label">Consórcio</td><td>' + ou(d.emp_consorcio) + (d.emp_cor_carro ? ' &nbsp;|&nbsp; cor: ' + escapeHtml(d.emp_cor_carro) : '') + '</td></tr>'
     +   '<tr><td class="label">Admissão</td><td>' + fmtData(d.adm_data) + '</td></tr>'
-    +   '<tr><td class="label">Demissão (saída efetiva)</td><td>' + fmtData(d.dem_data) + '</td></tr>'
+    +   '<tr><td class="label">Demissão</td><td>' + fmtData(d.dem_data) + '</td></tr>'
     +   '<tr><td class="label">Data da Baixa / TRCT</td><td>' + fmtData(d.trct_data) + '</td></tr>'
     +   '<tr><td class="label">Último salário</td><td>' + fmtValor(d.salario_base) + '</td></tr>'
     +   '<tr><td class="label">Função (CTPS)</td><td>' + ou(d.funcao_ctps) + '</td></tr>'
@@ -614,7 +567,7 @@ function gerarDocumentoWord(d, est) {
     +   '<tr><td class="label">Motivo do desligamento</td><td><span class="tag-causa">' + ou(d.tipo_causa) + '</span></td></tr>'
     +   '<tr><td class="label">Linhas / itinerários</td><td>' + ou(d.linhas) + '</td></tr>'
     +   linhaJustaCausa
-    +   '<tr><td class="label">Direito de defesa por escrito</td><td>' + sn(d.defesa_escrita) + '</td></tr>'
+    +   '<tr><td class="label">Defesa por escrito (justa causa)</td><td>' + sn(d.defesa_escrita) + '</td></tr>'
     +   '<tr><td class="label">Aviso prévio</td><td>' + ou(d.aviso_previo) + (d.aviso_reducao ? ' &nbsp;|&nbsp; ' + escapeHtml(d.aviso_reducao) : '') + '</td></tr>'
     +   '<tr><td class="label">TRCT recebeu / trouxe</td><td>' + sn(d.trct_recebeu) + ' / ' + sn(d.trct_trouxe) + '</td></tr>'
     +   '<tr><td class="label">Trouxe contracheques</td><td>' + sn(d.contracheques_trouxe) + '</td></tr>'
@@ -626,41 +579,33 @@ function gerarDocumentoWord(d, est) {
     +   '<tr><td class="label">Turno</td><td>' + ou(d.jor_turno) + '</td></tr>'
     +   '<tr><td class="label">Períodos em cada turno</td><td>' + oub(d.jor_turnos_periodos) + '</td></tr>'
     +   '<tr><td class="label">Início (ponto/garagem)</td><td>' + ou(d.jor_pisa_ponto) + '</td></tr>'
-    +   '<tr><td class="label">Término motorista (no ponto)</td><td>' + ou(d.jor_termino_ponto) + '</td></tr>'
-    +   '<tr><td class="label">Término cobrador (na arrecadação)</td><td>' + ou(d.jor_termino_arrecadacao) + '</td></tr>'
+    +   '<tr><td class="label">Término motorista (ponto)</td><td>' + ou(d.jor_termino_ponto) + '</td></tr>'
+    +   '<tr><td class="label">Término cobrador (arrecadação)</td><td>' + ou(d.jor_termino_arrecadacao) + '</td></tr>'
     +   '<tr><td class="label">Fazia dobra</td><td>' + sn(d.jor_dobra) + (d.jor_dobra ? ' &nbsp;|&nbsp; ' + escapeHtml(d.jor_dobra_horario || '?') + ' (' + escapeHtml(String(d.jor_dobra_qtd || '?')) + 'x semana)' : '') + '</td></tr>'
     +   '<tr><td class="label">Domingos e feriados</td><td>' + ou(d.jor_domingos) + '</td></tr>'
     +   '<tr><td class="label">Trabalho noturno (22h–5h)</td><td>' + ou(d.jor_noturno) + '</td></tr>'
     +   '<tr><td class="label">Folgas semanais</td><td>' + ou(d.jor_folgas) + '</td></tr>'
     +   '<tr><td class="label">Intervalo de placa</td><td>' + sn(d.int_placa) + (d.int_almoco_horario ? ' &nbsp;|&nbsp; almoço: ' + escapeHtml(d.int_almoco_horario) : '') + '</td></tr>'
-    +   '<tr><td class="label">Banheiro disponível no posto</td><td>' + sn(d.tem_banheiro) + '</td></tr>'
-    +   '<tr><td class="label">Bebedouro disponível no posto</td><td>' + sn(d.tem_bebedouro) + '</td></tr>'
+    +   '<tr><td class="label">Banheiro disponível</td><td>' + sn(d.tem_banheiro) + '</td></tr>'
+    +   '<tr><td class="label">Bebedouro disponível</td><td>' + sn(d.tem_bebedouro) + '</td></tr>'
     + '</table>'
-    + blocoAcumulo
-    + blocoDanos
+    + blocoAcumulo + blocoDanos
     + '<h2>6. VALE ALIMENTAÇÃO E FÉRIAS</h2><table>'
-    +   '<tr><td class="label">Recebeu Ticket Sodexo / VA</td><td>' + sn(d.va_sodexo_recebeu) + '</td></tr>'
+    +   '<tr><td class="label">Recebeu Sodexo / VA</td><td>' + sn(d.va_sodexo_recebeu) + '</td></tr>'
     +   '<tr><td class="label">VA cortado</td><td>' + sn(d.va_sodexo_cortado) + '</td></tr>'
     +   '<tr><td class="label">Valor mensal do VA</td><td>' + fmtValor(d.va_valor_mensal) + '</td></tr>'
-    +   '<tr><td class="label">Tirou férias durante o contrato</td><td>' + sn(d.ferias_tirou) + '</td></tr>'
+    +   '<tr><td class="label">Tirou férias</td><td>' + sn(d.ferias_tirou) + '</td></tr>'
     +   '<tr><td class="label">Período / dias de férias</td><td>' + ou(d.ferias_periodo) + '</td></tr>'
     + '</table>'
-    + blocoDocsDisp
-    + blocoObs
-    + blocoRel
-    + blocoAnexos
+    + blocoDocsDisp + blocoObs + blocoRel + blocoAnexos
     + '<div class="rodape">Gerado pela PWA Ficha OAM • versão ' + escapeHtml(est.metadata.versao_ficha)
     +   ' • em ' + escapeHtml(new Date().toLocaleString('pt-BR'))
-    +   '<br>Os dados estruturados (para a calculadora Skynet) estão em <b>ficha_dados.json</b>, anexo separadamente.</div>'
+    +   '<br>Os dados estruturados (calculadora Skynet) estão em <b>ficha_dados.json</b>, anexo separadamente.</div>'
     + '</body></html>';
 
-  // BOM (﻿) ajuda alguns leitores a detectarem UTF-8.
-  return new Blob(['﻿', html], { type: 'application/msword' });
+  return new Blob(['﻿', html], { type: 'text/html' });
 }
 
-// ====================================================================
-// ENVIAR POR EMAIL (Web Share API com fallback)
-// ====================================================================
 async function enviarPorEmail() {
   const d = coletarFicha();
   const faltam = validar(d);
@@ -676,21 +621,17 @@ async function enviarPorEmail() {
     const assunto = 'FICHA: ' + (d.rec_nome || '').toUpperCase() + ' x ' + (d.emp_nome || '').toUpperCase() + ' - ' + (d.data_atendimento || '');
 
     const arquivos = [];
-
-    // 1) JSON estruturado (para a calculadora / Skynet)
     const jsonBlob = new Blob([JSON.stringify(est, null, 2)], { type: 'application/json' });
     arquivos.push(new File([jsonBlob], 'ficha_dados.json', { type: 'application/json' }));
 
-    // 1b) Documento Word (.doc) — visualização rápida pelos advogados
+    // MIME text/html para o Web Share API aceitar (msword é bloqueado)
     const wordBlob = gerarDocumentoWord(d, est);
-    arquivos.push(new File([wordBlob], 'ficha_visual.doc', { type: 'application/msword' }));
+    arquivos.push(new File([wordBlob], 'ficha_visual.doc', { type: 'text/html' }));
 
-    // 2) Foto do cliente
     if (fotoCliente) {
       arquivos.push(new File([fotoCliente.blob], 'foto_cliente.jpg', { type: 'image/jpeg' }));
     }
 
-    // 3) Fotos dos documentos
     docs.forEach((doc, idx) => {
       const num = String(idx + 1).padStart(2, '0');
       let nome = 'doc_' + num;
@@ -702,37 +643,32 @@ async function enviarPorEmail() {
       arquivos.push(new File([doc.blob], nome, { type: 'image/jpeg' }));
     });
 
-    // Tenta Web Share API com arquivos (Android Chrome moderno)
-    const shareData = {
-      title: assunto,
-      text: corpo,
-      files: arquivos,
-    };
+    const shareData = { title: assunto, text: corpo, files: arquivos };
 
+    // ETAPA 1: tenta Web Share API
     if (navigator.canShare && navigator.canShare(shareData)) {
       hideOverlay();
       try {
         await navigator.share(shareData);
         showOverlay('✔ Compartilhamento concluído.\n\nNo Gmail: confira o destinatário (' + EMAIL_DESTINO + ') antes de enviar.', true);
+        return;
       } catch (e) {
-        if (e.name !== 'AbortError') {
-          showOverlay('Compartilhamento cancelado ou falhou:\n' + e.message, true);
-        } else {
+        if (e.name === 'AbortError') {
           hideOverlay();
+          return;
         }
+        console.warn('navigator.share falhou, usando fallback mailto+download:', e);
       }
-      return;
     }
 
-    // FALLBACK: Web Share API não suporta arquivos neste celular
+    // ETAPA 2: FALLBACK — download dos arquivos + mailto com destinatário
     hideOverlay();
-
-    if (!confirm(
-      'Este celular não suporta envio direto com anexos.\n\n' +
-      'Vou baixar os arquivos para você e abrir o Gmail. Depois é só anexar manualmente.\n\nContinuar?'
-    )) {
-      return;
-    }
+    showOverlay(
+      'Vou baixar os arquivos e abrir o Gmail com\n' +
+      EMAIL_DESTINO + ' já preenchido como destinatário.\n\n' +
+      'Depois é só anexar os arquivos da pasta "Downloads".'
+    );
+    await new Promise(r => setTimeout(r, 1500));
 
     arquivos.forEach((f) => {
       const url = URL.createObjectURL(f);
@@ -748,7 +684,10 @@ async function enviarPorEmail() {
     });
 
     const mailto = 'mailto:' + EMAIL_DESTINO + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(corpo);
-    setTimeout(() => { window.location.href = mailto; }, 500);
+    setTimeout(() => {
+      hideOverlay();
+      window.location.href = mailto;
+    }, 1200);
 
   } catch (e) {
     hideOverlay();
@@ -756,9 +695,6 @@ async function enviarPorEmail() {
   }
 }
 
-// ====================================================================
-// OVERLAY DE STATUS
-// ====================================================================
 function showOverlay(msg, comBotao = false) {
   document.getElementById('overlay-msg').textContent = msg;
   document.getElementById('overlay').hidden = false;

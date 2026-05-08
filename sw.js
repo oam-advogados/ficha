@@ -2,7 +2,7 @@
 // Cacheia a casca do app para que abra rapido no celular,
 // mas nao guarda dados de cliente (uso online).
 
-const CACHE_NAME = 'ficha-oam-v2';
+const CACHE_NAME = 'ficha-oam-v3';
 const ASSETS = [
   './',
   './index.html',
